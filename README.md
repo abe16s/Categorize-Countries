@@ -91,7 +91,7 @@ The dataset contains **10 features** for 167 countries:
 - **Weaknesses**: Struggles with varying densities.
 - **Use Case**: Outlier detection (e.g., Qatar, Niger).
 
-### All algorithms are custom written in the `src` directory and also standard libraries are used for comparison 
+### All algorithms are custom written in the `src` directory and also standard libraries are used for comparison. 
 ---
 
 
