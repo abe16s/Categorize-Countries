@@ -1,10 +1,12 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import plotly.express as px
 import matplotlib.pyplot as plt
 import seaborn as sns
-import plotly.express as px
 from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
+from sklearn.metrics import silhouette_score, davies_bouldin_score
 from scripts.clustering import perform_clustering
 from scripts.visualization import plot_clusters, plot_dendrogram
 from scripts.evaluation import compute_metrics
@@ -18,21 +20,23 @@ uploaded_file = st.sidebar.file_uploader("Upload CSV", type=["csv"])
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
 else:
-    df = pd.read_csv("data/Country-data.csv") 
+    df = pd.read_csv("data/Country-data.csv")  
 
 st.write("### 📊 Data Preview")
 st.write(df.head())
 
 features = st.multiselect("Select Features for Clustering", df.columns[1:], default=df.columns[1:3])
-df_selected = df[features]
+if not features:
+    st.error("⚠️ Please select at least two features!")
+    st.stop()
 
+df_selected = df[features]
 scaler = StandardScaler()
 df_scaled = scaler.fit_transform(df_selected)
 
+# --- CLUSTERING OPTIONS ---
 st.sidebar.header("⚙️ Clustering Options")
-algorithm = st.sidebar.selectbox(
-    "Choose Clustering Algorithm", ["K-Means", "DBSCAN", "Hierarchical"]
-)
+algorithm = st.sidebar.selectbox("Choose Clustering Algorithm", ["K-Means", "DBSCAN", "Hierarchical"])
 
 params = {}
 if algorithm == "K-Means":
@@ -54,41 +58,16 @@ if algorithm == "Hierarchical":
     fig2 = plot_dendrogram(df_scaled)
     st.pyplot(fig2)
 
+st.write("### 🌍 Clustered Countries")
+
+for cluster_id, cluster_df in df.groupby("Cluster"):
+    with st.expander(f" View Cluster {cluster_id} ({len(cluster_df)} countries)"):
+        st.table(cluster_df[["country"]])
+
+
 st.write("### 📈 Clustering Performance Metrics")
 metrics = compute_metrics(df_scaled, df["Cluster"])
 st.write(metrics)
-
-if st.button("Run All Algorithms"):
-    results = {}
-    
-    # K-means
-    kmeans = KMeans(n_clusters=4)
-    results['K-means'] = kmeans.fit_predict(X)
-    
-    # DBSCAN
-    dbscan = DBSCAN(eps=0.5)
-    results['DBSCAN'] = dbscan.fit_predict(X)
-    
-    # Hierarchical
-    agg = AgglomerativeClustering(n_clusters=4)
-    results['Hierarchical'] = agg.fit_predict(X)
-    
-    # Create comparison DataFrame
-    comparison_df = df[['country']].copy()
-    for algo_name, clusters in results.items():
-        comparison_df[algo_name] = clusters
-    
-    st.dataframe(comparison_df)
-    
-    metrics = []
-    for algo_name, clusters in results.items():
-        metrics.append({
-            'Algorithm': algo_name,
-            'Silhouette': silhouette_score(X, clusters),
-            'Davies-Bouldin': davies_bouldin_score(X, clusters)
-        })
-    
-    st.table(pd.DataFrame(metrics))
 
 st.sidebar.markdown("### 📥 Download Results")
 csv = df.to_csv(index=False).encode()
